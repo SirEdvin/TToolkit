@@ -1,0 +1,26 @@
+modLoader="javafml" #mandatory
+loaderVersion="[36,)"
+license="MIT"
+[[mods]]
+modId="ttoolkit" #mandatory
+version="${file.jarVersion}" #mandatory
+ # A display name for the mod
+displayName="TToolkit" #mandatory
+credits="Thanks for this example mod goes to Java"
+authors="SirEdvin" #optional
+# The description text for the mod (multi line!) (#mandatory)
+description="""
+Basically test toolkit for another mods
+"""
+[[dependencies.ttoolkit]] #optional
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.ttoolkit]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="BOTH"
