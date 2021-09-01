@@ -252,6 +252,7 @@ jar.finalizedBy('reobfJar')
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            artifactId archivesBaseName
             artifact jar
         }
     }
