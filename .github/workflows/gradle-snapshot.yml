@@ -42,5 +42,5 @@ jobs:
       - name: Publish to GitHub Packages
         run: ./gradlew publish -Dsnapshot=true
         env:
-          USERNAME: ${{ github.actor }}
+          USERNAME: ${{ secrets.REPSY_USERNAME }}
           PASSWORD: ${{ secrets.REPSY_TOKEN }}
