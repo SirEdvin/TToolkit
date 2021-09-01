@@ -38,12 +38,7 @@ jobs:
 
       - name: Build with Gradle
         run: xvfb-run ./gradlew build -Dsnapshot=true
-        env:
-          USERNAME: ${{ github.actor }}
-          TOKEN: ${{ secrets.REPSY_TOKEN }}
 
-      # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-      # the publishing section of your build.gradle
       - name: Publish to GitHub Packages
         run: ./gradlew publish -Dsnapshot=true
         env:
