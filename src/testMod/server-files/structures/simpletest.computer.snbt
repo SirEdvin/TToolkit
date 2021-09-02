@@ -1,26 +1,11 @@
 {
+    DataVersion: 2730,
     size: [1, 1, 1],
+    data: [
+        {pos: [0, 0, 0], state: "computercraft:computer_advanced{facing:north,state:blinking}", nbt: {ComputerId: 0, Label: "simpletest.computer", On: 1b, id: "computercraft:computer_advanced"}},
+    ],
     entities: [],
-    blocks: [
-        {
-            nbt: {
-                id: "computercraft:computer_advanced",
-                Label: "simpletest.computer",
-                ComputerId: 0,
-                On: 1b
-            },
-            pos: [0, 0, 0],
-            state: 0
-        }
-    ],
     palette: [
-        {
-            Properties: {
-                facing: "north",
-                state: "blinking"
-            },
-            Name: "computercraft:computer_advanced"
-        }
-    ],
-    DataVersion: 2230
+        "computercraft:computer_advanced{facing:north,state:blinking}"
+    ]
 }

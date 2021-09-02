@@ -3,7 +3,7 @@ package site.siredvin.ttoolkit;
 import dan200.computercraft.api.ComputerCraftAPI;
 import dan200.computercraft.ingame.mod.TestAPI;
 import dan200.computercraft.ingame.mod.TestLoader;
-import net.minecraft.test.StructureHelper;
+import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
@@ -26,7 +26,11 @@ public class TToolkitMod {
             throw new IllegalArgumentException("Cannot update sourceDir!");
         TToolkitMod.sourceDir = sourceDir;
         TToolkitMod.counter = counter;
-        StructureHelper.testStructuresDir = sourceDir.resolve("structures").toString();
+        StructureUtils.testStructuresDir = sourceDir.resolve("structures").toString();
+    }
+
+    public static boolean isConfigured() {
+        return sourceDir != null;
     }
 
     public static synchronized int getCounter() {

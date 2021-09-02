@@ -6,7 +6,6 @@
 package dan200.computercraft.ingame.api;
 
 import dan200.computercraft.ingame.mod.TestAPI;
-import net.minecraft.test.TestList;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

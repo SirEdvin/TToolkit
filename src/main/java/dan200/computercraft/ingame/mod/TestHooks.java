@@ -5,32 +5,31 @@
  */
 package dan200.computercraft.ingame.mod;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
-import net.minecraft.command.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.*;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.test.*;
-import net.minecraft.util.Rotation;
-import net.minecraft.util.SharedConstants;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.GameRules;
-import net.minecraft.world.World;
-import net.minecraft.world.gen.Heightmap;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.api.distmarker.Dist;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
 import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraftforge.fmllegacy.server.ServerLifecycleHooks;
+import net.minecraftforge.fmlserverevents.FMLServerStartedEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import site.siredvin.ttoolkit.TToolkitMod;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -38,10 +37,8 @@ import java.util.stream.Collectors;
 public class TestHooks {
     private static final Logger LOG = LogManager.getLogger(TestHooks.class);
 
-    private static TestResultList runningTests = null;
+    private static MultipleTestTracker runningTests = null;
     private static boolean shutdown = false;
-
-    public static List<String> failedTests = new ArrayList<>();
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -58,21 +55,26 @@ public class TestHooks {
         rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, server);
         rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
 
-        ServerWorld world = event.getServer().getLevel(World.OVERWORLD);
+        ServerLevel world = event.getServer().getLevel(Level.OVERWORLD);
         if (world != null) world.setDayTime(6000);
 
         LOG.info("Cleaning up after last run");
-        CommandSource source = server.createCommandSourceStack();
-        TestUtils.clearAllTests(source.getLevel(), getStart(source), TestCollection.singleton, 200);
+        CommandSourceStack source = server.createCommandSourceStack();
+        GameTestRunner.clearAllTests(source.getLevel(), getStart(source), GameTestTicker.SINGLETON, 200);
 
-        LOG.info("Importing files");
-        ToolkitCommand.importFiles(server);
+        if (TToolkitMod.isConfigured()) {
+            LOG.info("Importing files");
+            ToolkitCommand.importFiles(server);
+        } else {
+            LOG.info("Skipping file importing ...");
+        }
     }
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.START)
+            return;
         boolean isTestRun = System.getProperty(String.format("%s.run", TToolkitMod.MOD_ID), "false").equals("true");
-        if (event.phase != TickEvent.Phase.START) return;
 
         // Let the world settle a bit before starting tests.
         TToolkitMod.decreaseCounter();
@@ -85,29 +87,58 @@ public class TestHooks {
             }
         }
 
-        if (!SharedConstants.IS_RUNNING_IN_IDE) TestCollection.singleton.tick();
+        if (!SharedConstants.IS_RUNNING_IN_IDE)
+            GameTestTicker.SINGLETON.tick();
 
         if (runningTests != null && runningTests.isDone())
             finishTests();
     }
 
-    public static TestResultList runTests() {
-        failedTests.clear();
+    public static MultipleTestTracker runTests() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        CommandSource source = server.createCommandSourceStack();
-        Dist dist = FMLLoader.getDist();
-        Collection<TestFunctionInfo> tests = TestRegistry.getAllTestFunctions()
+        CommandSourceStack source = server.createCommandSourceStack();
+        Collection<TestFunction> tests = GameTestRegistry.getAllTestFunctions()
                 .stream()
-                .filter(x -> FMLLoader.getDist().isClient() | !x.batchName.startsWith("client"))
-                .filter(x -> FMLLoader.getDist().isDedicatedServer() | !x.batchName.startsWith("server"))
+                .filter(x -> FMLLoader.getDist().isClient() | !x.getBatchName().startsWith("client"))
+                .filter(x -> FMLLoader.getDist().isDedicatedServer() | !x.getBatchName().startsWith("server"))
                 .collect(Collectors.toList());
 
         LOG.info("Running {} tests...", tests.size());
 
-        Collection<TestBatch> batches = TestUtils.groupTestsIntoBatches(tests);
-        return new TestResultList(TestUtils.runTestBatches(
-                batches, getStart(source), Rotation.NONE, source.getLevel(), TestCollection.singleton, 8
+        Collection<GameTestBatch> batches = GameTestRunner.groupTestsIntoBatches(tests);
+        return new MultipleTestTracker(GameTestRunner.runTestBatches(
+                batches, getStart(source), Rotation.NONE, source.getLevel(), GameTestTicker.SINGLETON, 8
         ));
+    }
+
+    public static void writeResults(CommandSourceStack source, MultipleTestTracker result) {
+        if (!result.isDone())
+            return;
+
+        say(source, "Finished tests - " + result.getTotalCount() + " tests were run", ChatFormatting.WHITE);
+        if (result.hasFailedRequired()) {
+            say(source, result.getFailedRequiredCount() + " required tests failed :(", ChatFormatting.RED);
+        } else {
+            say(source, "All required tests passed :)", ChatFormatting.GREEN);
+        }
+
+        if (result.hasFailedOptional()) {
+            say(source, result.getFailedOptionalCount() + " optional tests failed", ChatFormatting.GRAY);
+        }
+        for (GameTestInfo tracker: runningTests.tests) {
+            String message = String.format(
+                    "%s Test %s with result %s",
+                    tracker.isOptional() ? "Optional" : "Required",
+                    tracker.getTestName(),
+                    tracker.hasSucceeded() ? "passed" : "failed"
+            );
+            if (tracker.hasSucceeded()) {
+                say(source, message, ChatFormatting.GREEN);
+            } else {
+                say(source, message, ChatFormatting.RED);
+                say(source, String.format("\t%s", Objects.requireNonNull(tracker.getError()).getMessage()), ChatFormatting.GRAY);
+            }
+        }
     }
 
     private static void startTests() {
@@ -117,26 +148,7 @@ public class TestHooks {
     private static void finishTests() {
         if (shutdown) return;
         shutdown = true;
-
-        LOG.info("--------------------------------------------------");
-        LOG.info("Finished tests - {} were run", runningTests.getTotalCount());
-        if (runningTests.hasFailedRequired()) {
-            LOG.error("{} required tests failed", runningTests.getFailedRequiredCount());
-        }
-        if (runningTests.hasFailedOptional()) {
-            LOG.warn("{} optional tests failed", runningTests.getFailedOptionalCount());
-        }
-        for (TestTracker tracker: runningTests.tests) {
-            LOG.info(
-                    "{} Test {} with result {} ",
-                    tracker.isOptional() ? "Optional" : "Required",
-                    tracker.getTestName(),
-                    tracker.hasSucceeded() ? "passed" : "failed"
-            );
-            if (tracker.hasFailed())
-                LOG.info("\t{}", Objects.requireNonNull(tracker.getError()).getMessage());
-        }
-        LOG.info("--------------------------------------------------");
+        writeResults(ServerLifecycleHooks.getCurrentServer().createCommandSourceStack(), runningTests);
 
         if (FMLLoader.getDist().isDedicatedServer()) {
             shutdownServer();
@@ -145,9 +157,9 @@ public class TestHooks {
         }
     }
 
-    private static BlockPos getStart(CommandSource source) {
+    private static BlockPos getStart(CommandSourceStack source) {
         BlockPos pos = new BlockPos(source.getPosition());
-        return new BlockPos(pos.getX(), source.getLevel().getHeightmapPos(Heightmap.Type.WORLD_SURFACE, pos).getY(), pos.getZ() + 3);
+        return new BlockPos(pos.getX(), source.getLevel().getHeightmapPos(Heightmap.Types.WORLD_SURFACE, pos).getY(), pos.getZ() + 3);
     }
 
     public static void shutdownCommon() {
@@ -173,5 +185,9 @@ public class TestHooks {
             minecraft.stop();
             shutdownCommon();
         });
+    }
+
+    private static void say(CommandSourceStack source, String message, ChatFormatting colour) {
+        source.sendFailure(new TextComponent(message).withStyle(colour));
     }
 }

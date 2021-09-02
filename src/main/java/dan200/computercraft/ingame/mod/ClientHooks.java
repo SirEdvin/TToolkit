@@ -5,23 +5,27 @@
  */
 package dan200.computercraft.ingame.mod;
 
-import net.minecraft.block.Blocks;
+import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.MainMenuScreen;
-import net.minecraft.client.settings.CloudOption;
-import net.minecraft.client.settings.ParticleStatus;
+import net.minecraft.client.ParticleStatus;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.tutorial.TutorialSteps;
-import net.minecraft.util.datafix.codec.DatapackCodec;
-import net.minecraft.util.registry.DynamicRegistries;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.world.*;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.Biomes;
-import net.minecraft.world.gen.FlatChunkGenerator;
-import net.minecraft.world.gen.FlatGenerationSettings;
-import net.minecraft.world.gen.FlatLayerInfo;
-import net.minecraft.world.gen.settings.DimensionGeneratorSettings;
-import net.minecraft.world.gen.settings.DimensionStructuresSettings;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.level.DataPackConfig;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LevelSettings;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.levelgen.FlatLevelSource;
+import net.minecraft.world.level.levelgen.StructureSettings;
+import net.minecraft.world.level.levelgen.WorldGenSettings;
+import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
+import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -33,7 +37,7 @@ import site.siredvin.ttoolkit.TToolkitMod;
 import java.util.Collections;
 import java.util.Optional;
 
-import static net.minecraft.world.gen.settings.DimensionGeneratorSettings.withOverworld;
+import static net.minecraft.world.level.levelgen.WorldGenSettings.withOverworld;
 
 @Mod.EventBusSubscriber(modid = TToolkitMod.MOD_ID, value = Dist.CLIENT)
 public final class ClientHooks {
@@ -46,7 +50,7 @@ public final class ClientHooks {
 
     @SubscribeEvent
     public static void onGuiInit(GuiScreenEvent.InitGuiEvent event) {
-        if (triggered || !(event.getGui() instanceof MainMenuScreen)) return;
+        if (triggered || !(event.getGui() instanceof TitleScreen)) return;
         triggered = true;
 
         ClientHooks.openWorld();
@@ -57,7 +61,7 @@ public final class ClientHooks {
 
         // Clear some options before we get any further.
         minecraft.options.autoJump = false;
-        minecraft.options.renderClouds = CloudOption.OFF;
+        minecraft.options.renderClouds = CloudStatus.OFF;
         minecraft.options.particles = ParticleStatus.MINIMAL;
         minecraft.options.tutorialStep = TutorialSteps.NONE;
         minecraft.options.renderDistance = 6;
@@ -69,25 +73,27 @@ public final class ClientHooks {
         } else {
             LOG.info("World does not exist, creating it for the first time");
 
-            DynamicRegistries.Impl registries = DynamicRegistries.builtin();
+            RegistryAccess.RegistryHolder registries = RegistryAccess.builtin();
 
             Registry<DimensionType> dimensions = registries.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
             Registry<Biome> biomes = registries.registryOrThrow(Registry.BIOME_REGISTRY);
-            DimensionGeneratorSettings generator = new DimensionGeneratorSettings(0, false, false, withOverworld(
+
+            FlatLevelGeneratorSettings flatSettings = FlatLevelGeneratorSettings.getDefault(biomes)
+                    .withLayers(
+                            Collections.singletonList(new FlatLayerInfo(4, Blocks.WHITE_CONCRETE)),
+                            new StructureSettings(Optional.empty(), Collections.emptyMap())
+                    );
+            flatSettings.setBiome(() -> biomes.get(Biomes.DESERT));
+
+            WorldGenSettings generator = new WorldGenSettings(0, false, false, withOverworld(
                     dimensions,
                     DimensionType.defaultDimensions(dimensions, biomes, registries.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY), 0),
-                    new FlatChunkGenerator(new FlatGenerationSettings(
-                            biomes,
-                            new DimensionStructuresSettings(Optional.empty(), Collections.emptyMap()),
-                            Collections.singletonList(new FlatLayerInfo(4, Blocks.WHITE_CONCRETE)),
-                            false, false,
-                            Optional.of(() -> biomes.getOrThrow(Biomes.DESERT))
-                    ))
+                    new FlatLevelSource(flatSettings)
             ));
 
-            WorldSettings settings = new WorldSettings(
+            LevelSettings settings = new LevelSettings(
                     "test", GameType.CREATIVE, false, Difficulty.PEACEFUL, true,
-                    new GameRules(), DatapackCodec.DEFAULT
+                    new GameRules(), DataPackConfig.DEFAULT
             );
             Minecraft.getInstance().createLevel("test", settings, registries, generator);
         }

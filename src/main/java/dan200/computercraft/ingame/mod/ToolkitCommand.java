@@ -7,22 +7,20 @@ package dan200.computercraft.ingame.mod;
 
 import com.mojang.brigadier.CommandDispatcher;
 import dan200.computercraft.ComputerCraft;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.command.CommandSource;
-import net.minecraft.data.NBTToSNBTConverter;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.item.ArmorStandEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.test.*;
-import net.minecraft.tileentity.StructureBlockTileEntity;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.storage.FolderName;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.level.block.entity.StructureBlockEntity;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.fml.loading.FMLLoader;
 import site.siredvin.ttoolkit.TToolkitMod;
 
@@ -30,17 +28,16 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 
 import static dan200.computercraft.shared.command.builder.HelpingArgumentBuilder.choice;
-import static net.minecraft.command.Commands.literal;
+import static net.minecraft.commands.Commands.literal;
 
 /**
  * Helper commands for importing/exporting the computer directory.
  */
 class ToolkitCommand {
-    public static void register(CommandDispatcher<CommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(choice(TToolkitMod.MOD_ID)
                 .then(literal("import").executes(context -> {
                     importFiles(context.getSource().getServer());
@@ -49,21 +46,23 @@ class ToolkitCommand {
                 .then(literal("export").executes(context -> {
                     exportFiles(context.getSource().getServer());
 
-                    Path path = Paths.get(StructureHelper.testStructuresDir);
-                    int total = 0;
-                    for (TestFunctionInfo function : TestRegistry.getAllTestFunctions()) {
-                        ResourceLocation resourcelocation = new ResourceLocation("minecraft", function.getStructureName());
-                        Path input = context.getSource().getLevel().getStructureManager().createPathToStructure(resourcelocation, ".nbt");
-                        Path output = NBTToSNBTConverter.convertStructure(input, function.getStructureName(), path);
-                        if (output != null) total++;
+                    for (TestFunction function : GameTestRegistry.getAllTestFunctions()) {
+                        TestCommand.exportTestStructure(context.getSource(), function.getStructureName());
                     }
-                    return total;
+                    return 0;
+                }))
+                .then(literal("regen-structures").executes(context -> {
+                    for (TestFunction function : GameTestRegistry.getAllTestFunctions()) {
+                        dispatcher.execute("test import " + function.getTestName(), context.getSource());
+                        TestCommand.exportTestStructure(context.getSource(), function.getStructureName());
+                    }
+                    return 0;
                 }))
                 .then(literal("runall").executes(context -> {
-                    TestRegistry.forgetFailedTests();
-                    TestResultList result = TestHooks.runTests();
+                    GameTestRegistry.forgetFailedTests();
+                    MultipleTestTracker result = TestHooks.runTests();
                     result.addListener(new Callback(context.getSource(), result));
-                    result.addFailureListener(x -> TestRegistry.rememberFailedTest(x.getTestFunction()));
+                    result.addFailureListener(x -> GameTestRegistry.rememberFailedTest(x.getTestFunction()));
                     return 0;
                 }))
 
@@ -74,27 +73,26 @@ class ToolkitCommand {
                     return 0;
                 }))
                 .then(literal("marker").executes(context -> {
-                    ServerPlayerEntity player = context.getSource().getPlayerOrException();
-                    BlockPos pos = StructureHelper.findNearestStructureBlock(player.blockPosition(), 15, player.getLevel());
+                    ServerPlayer player = context.getSource().getPlayerOrException();
+                    BlockPos pos = StructureUtils.findNearestStructureBlock(player.blockPosition(), 15, player.getLevel());
                     if (pos == null) return error(context.getSource(), "No nearby test");
 
-                    StructureBlockTileEntity structureBlock = (StructureBlockTileEntity) player.getLevel().getBlockEntity(pos);
-                    TestFunctionInfo info = TestRegistry.getTestFunction(structureBlock.getStructurePath());
+                    StructureBlockEntity structureBlock = (StructureBlockEntity) player.getLevel().getBlockEntity(pos);
+                    TestFunction info = GameTestRegistry.getTestFunction(structureBlock.getStructurePath());
 
                     // Kill the existing armor stand
                     player
-                            .getLevel().getEntities()
-                            .filter(x -> x.isAlive() && x instanceof ArmorStandEntity && x.getName().getString().equals(info.getTestName()))
-                            .forEach(Entity::remove);
+                            .getLevel().getEntities(EntityType.ARMOR_STAND, x -> x.isAlive() && x.getName().getString().equals(info.getTestName()))
+                            .forEach(Entity::kill);
 
                     // And create a new one
-                    CompoundNBT nbt = new CompoundNBT();
+                    CompoundTag nbt = new CompoundTag();
                     nbt.putBoolean("Marker", true);
                     nbt.putBoolean("Invisible", true);
-                    ArmorStandEntity armorStand = EntityType.ARMOR_STAND.create(player.getLevel());
+                    ArmorStand armorStand = EntityType.ARMOR_STAND.create(player.getLevel());
                     armorStand.readAdditionalSaveData(nbt);
                     armorStand.copyPosition(player);
-                    armorStand.setCustomName(new StringTextComponent(info.getTestName()));
+                    armorStand.setCustomName(new TextComponent(info.getTestName()));
                     return 0;
                 }))
         );
@@ -104,7 +102,7 @@ class ToolkitCommand {
         Path sourceDir = TToolkitMod.getSourceDir();
         Objects.requireNonNull(sourceDir);
         try {
-            Copier.replicate(sourceDir.resolve("computers"), server.getWorldPath(new FolderName(ComputerCraft.MOD_ID)));
+            Copier.replicate(sourceDir.resolve("computers"), server.getWorldPath(new LevelResource(ComputerCraft.MOD_ID)));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -114,7 +112,7 @@ class ToolkitCommand {
         Path sourceDir = TToolkitMod.getSourceDir();
         Objects.requireNonNull(sourceDir);
         try {
-            Copier.replicate(server.getWorldPath(new FolderName(ComputerCraft.MOD_ID)), sourceDir.resolve("computers"));
+            Copier.replicate(server.getWorldPath(new LevelResource(ComputerCraft.MOD_ID)), sourceDir.resolve("computers"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -134,29 +132,32 @@ class ToolkitCommand {
         }
     }
 
-    private static class Callback implements ITestCallback {
-        private final CommandSource source;
-        private final TestResultList result;
+    private static class Callback implements GameTestListener {
+        private final CommandSourceStack source;
+        private final MultipleTestTracker result;
 
-        Callback(CommandSource source, TestResultList result) {
+        Callback(CommandSourceStack source, MultipleTestTracker result) {
             this.source = source;
             this.result = result;
         }
 
         @Override
-        public void testStructureLoaded(@Nonnull TestTracker tracker) {
+        public void testStructureLoaded(@Nonnull GameTestInfo tracker) {
         }
 
         @Override
-        public void testFailed(@Nonnull TestTracker tracker) {
-            if (!tracker.isDone()) return;
+        public void testFailed(@Nonnull GameTestInfo tracker) {
+            TestHooks.writeResults(source, result);
+        }
 
-            error(source, result.getFailedRequiredCount() + " required tests failed");
+        @Override
+        public void testPassed(@Nonnull GameTestInfo tracker) {
+            TestHooks.writeResults(source, result);
         }
     }
 
-    private static int error(CommandSource source, String message) {
-        source.sendFailure(new StringTextComponent(message).withStyle(TextFormatting.RED));
+    private static int error(CommandSourceStack source, String message) {
+        source.sendFailure(new TextComponent(message).withStyle(ChatFormatting.RED));
         return 0;
     }
 }

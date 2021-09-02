@@ -1,16 +1,18 @@
 package dan200.computercraft.ingame.api
 
 import dan200.computercraft.ingame.mod.ImageUtils
-import net.minecraft.block.BlockState
-import net.minecraft.block.Blocks
 import net.minecraft.client.Minecraft
-import net.minecraft.command.arguments.BlockStateInput
-import net.minecraft.entity.item.ArmorStandEntity
-import net.minecraft.util.ScreenShotHelper
-import net.minecraft.util.math.BlockPos
-import net.minecraft.world.gen.Heightmap
+import net.minecraft.client.Screenshot
+import net.minecraft.commands.arguments.blocks.BlockInput
+import net.minecraft.core.BlockPos
+import net.minecraft.gametest.framework.GameTestAssertException
+import net.minecraft.gametest.framework.GameTestHelper
+import net.minecraft.gametest.framework.GameTestSequence
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.levelgen.Heightmap
 import site.siredvin.ttoolkit.TToolkitMod
-import java.lang.RuntimeException
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
@@ -24,9 +26,9 @@ import javax.imageio.ImageIO
  */
 fun GameTestSequence.thenComputerOk(name: String? = null, marker: String = ComputerState.DONE): GameTestSequence {
     val label = parent.testName + (if (name == null) "" else ".$name")
-    return this.thenWaitUntil{
+    return this.thenWaitUntil {
         val computer = ComputerState.get(label)
-        if (computer == null || !computer.isDone(marker)) throw GameTestAssertException("Computer '$label' has not finished yet.")
+        if (computer == null || !computer.isDone(marker)) throw GameTestAssertException("Computer '$label' has not reached $marker yet.")
     }.thenExecute {
         ComputerState.get(label).check(marker)
     }
@@ -46,6 +48,7 @@ fun GameTestSequence.thenComputerFail(expectedError: String, name: String? = nul
             throw RuntimeException("%s are not %s".format(error, expectedError))
     }
 }
+
 
 /**
  * Run a task on the client
@@ -113,7 +116,7 @@ fun GameTestSequence.thenScreenshot(name: String? = null): GameTestSequence {
         }
 }
 
-val GameTestHelper.testName: String get() = tracker.testName
+val GameTestHelper.testName: String get() = testInfo.testName
 
 /**
  * Modify a block state within the test.
@@ -129,7 +132,7 @@ fun GameTestHelper.sequence(run: GameTestSequence.() -> GameTestSequence) {
 /**
  * Set a block within the test structure.
  */
-fun GameTestHelper.setBlock(pos: BlockPos, state: BlockStateInput) = state.place(level, absolutePos(pos), 3)
+fun GameTestHelper.setBlock(pos: BlockPos, state: BlockInput) = state.place(level, absolutePos(pos), 3)
 
 /**
  * "Normalise" the current world in preparation for screenshots.
@@ -137,7 +140,7 @@ fun GameTestHelper.setBlock(pos: BlockPos, state: BlockStateInput) = state.place
  * Basically removes any dirt and replaces it with concrete.
  */
 fun GameTestHelper.normaliseScene() {
-    val y = level.getHeightmapPos(Heightmap.Type.WORLD_SURFACE, absolutePos(BlockPos.ZERO))
+    val y = level.getHeightmapPos(Heightmap.Types.WORLD_SURFACE, absolutePos(BlockPos.ZERO))
     for (x in -100..100) {
         for (z in -100..100) {
             val pos = y.offset(x, -3, z)
@@ -154,9 +157,9 @@ fun GameTestHelper.normaliseScene() {
  */
 fun GameTestHelper.positionAtArmorStand() {
     val entities = level.getEntities(null, bounds) { it.name.string == testName }
-    if (entities.size <= 0 || entities[0] !is ArmorStandEntity) throw IllegalStateException("Cannot find armor stand")
+    if (entities.size <= 0 || entities[0] !is ArmorStand) throw IllegalStateException("Cannot find armor stand")
 
-    val stand = entities[0] as ArmorStandEntity
+    val stand = entities[0] as ArmorStand
     val player = level.randomPlayer ?: throw NullPointerException("Player does not exist")
 
     player.connection.teleport(stand.x, stand.y, stand.z, stand.yRot, stand.xRot)
@@ -167,9 +170,6 @@ class ClientTestHelper {
     val minecraft: Minecraft = Minecraft.getInstance()
 
     fun screenshot(name: String) {
-        ScreenShotHelper.grab(
-            minecraft.gameDirectory, name,
-            minecraft.window.width, minecraft.window.height, minecraft.mainRenderTarget
-        ) { TToolkitMod.LOGGER.info(it.string) }
+        Screenshot.grab(minecraft.gameDirectory, name, minecraft.mainRenderTarget) { TToolkitMod.LOGGER.info(it.string) }
     }
 }
