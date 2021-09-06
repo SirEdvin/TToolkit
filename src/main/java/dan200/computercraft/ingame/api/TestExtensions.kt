@@ -18,37 +18,44 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
 import javax.imageio.ImageIO
 
+fun GameTestSequence.thenWaitUntilComputerState(state: String, name: String? = null): GameTestSequence {
+    val label = parent.testName + (if (name == null) "" else "_$name")
+    return this.thenWaitUntil {
+        val computer = ComputerState.get(label) ?: throw GameTestAssertException("Cannot find any computer data")
+        if (!computer.isPass(state)) {
+            throw GameTestAssertException("Computer '$label' has not in '$state' yet, only in '${computer.current}'")
+        }
+    }
+}
+
+fun GameTestSequence.thenComputerState(state: String, name: String? = null): GameTestSequence {
+    val label = parent.testName + (if (name == null) "" else "_$name")
+    return this.thenWaitUntilComputerState(state, name).thenExecute {
+        ComputerState.get(label).check(state)
+    }
+}
+
+fun GameTestSequence.thenComputerStateFail(state: String, expectedError: String, name: String? = null): GameTestSequence {
+    val label = parent.testName + (if (name == null) "" else "_$name")
+    return this.thenWaitUntilComputerState(state, name).thenExecute {
+        val error = ComputerState.get(label).getError() ?: throw RuntimeException("Not error appeared")
+        if (expectedError != error)
+            throw RuntimeException("%s are not %s".format(error, expectedError))
+    }
+}
 
 /**
  * Wait until a computer has finished running and check it is OK.
  */
-fun GameTestSequence.thenComputerOk(name: String? = null, marker: String = ComputerState.DONE): GameTestSequence {
-    val label = parent.testName + (if (name == null) "" else "_$name")
-    return this.thenWaitUntil{
-        // TODO: add start computer label
-        val computer = ComputerState.get(label)
-        if (computer == null || !computer.isDone(marker)) {
-//            ComputerState.dump(label)
-            throw GameTestAssertException("Computer '$label' has not finished yet.")
-        }
-    }.thenExecute {
-        ComputerState.get(label).check(marker)
-    }
+fun GameTestSequence.thenComputerOk(name: String? = null): GameTestSequence {
+    return thenComputerState(ComputerState.DONE, name)
 }
 
 /**
  * Wait until a computer has finished running and check it is not ok.
  */
-fun GameTestSequence.thenComputerFail(expectedError: String, name: String? = null, marker: String = ComputerState.DONE): GameTestSequence {
-    val label = parent.testName + (if (name == null) "" else ".$name")
-    return this.thenWaitUntil {
-        val computer = ComputerState.get(label)
-        if (computer == null || !computer.isDone(marker)) throw GameTestAssertException("Computer '$label' has not finished yet.")
-    }.thenExecute {
-        val error = ComputerState.get(label).getError() ?: throw RuntimeException("Not error appeared")
-        if (expectedError != error)
-            throw RuntimeException("%s are not %s".format(error, expectedError))
-    }
+fun GameTestSequence.thenComputerFail(expectedError: String, name: String? = null): GameTestSequence {
+    return thenComputerStateFail(ComputerState.DONE, expectedError, name)
 }
 
 /**

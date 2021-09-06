@@ -1,0 +1,7 @@
+test.eq("start", test.current())
+test.pass("phase1")
+test.eq("phase1", test.current())
+sleep(0.5)
+test.assert(true)
+test.pass("phase2")
+test.eq("phase2", test.current())
