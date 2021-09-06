@@ -1,6 +1,8 @@
 package siredvin.site.ttoolkit.testmod.tests
 
 import dan200.computercraft.ingame.api.*
+import net.minecraft.gametest.framework.GameTest
+import net.minecraft.gametest.framework.GameTestHelper
 
 class LoadTest {
     @GameTest(timeoutTicks = 400)

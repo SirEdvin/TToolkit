@@ -1,7 +1,7 @@
 {
     size: [2, 2, 2],
     entities: [],
-    blocks: [
+    data: [
         {
             nbt: {
                 id: "computercraft:computer_advanced",
@@ -10,7 +10,7 @@
                 On: 1b
             },
             pos: [0, 0, 0],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -20,7 +20,7 @@
                 On: 1b
             },
             pos: [1, 0, 0],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -30,7 +30,7 @@
                 On: 1b
             },
             pos: [0, 1, 0],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -40,7 +40,7 @@
                 On: 1b
             },
             pos: [0, 0, 1],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -50,7 +50,7 @@
                 On: 1b
             },
             pos: [1, 0, 1],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -60,7 +60,7 @@
                 On: 1b
             },
             pos: [0, 1, 1],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -70,7 +70,7 @@
                 On: 1b
             },
             pos: [1, 1, 0],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         },
         {
             nbt: {
@@ -80,17 +80,11 @@
                 On: 1b
             },
             pos: [1, 1, 1],
-            state: 0
+            state: "computercraft:computer_advanced{facing:north,state:blinking}"
         }
     ],
     palette: [
-        {
-            Properties: {
-                facing: "north",
-                state: "blinking"
-            },
-            Name: "computercraft:computer_advanced"
-        }
+        "computercraft:computer_advanced{facing:north,state:blinking}"
     ],
-    DataVersion: 2230
+    DataVersion: 2730
 }

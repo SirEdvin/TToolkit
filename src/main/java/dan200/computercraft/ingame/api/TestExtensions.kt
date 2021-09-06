@@ -23,7 +23,7 @@ import javax.imageio.ImageIO
 fun GameTestSequence.thenWaitUntilComputerState(state: String, name: String? = null): GameTestSequence {
     val label = parent.testName + (if (name == null) "" else "_$name")
     return this.thenWaitUntil {
-        val computer = ComputerState.get(label) ?: throw GameTestAssertException("Cannot find any computer data")
+        val computer = ComputerState.get(label) ?: throw GameTestAssertException("Cannot find any computer data for '$label'")
         if (!computer.isPass(state)) {
             throw GameTestAssertException("Computer '$label' has not in '$state' yet, only in '${computer.current}'")
         }

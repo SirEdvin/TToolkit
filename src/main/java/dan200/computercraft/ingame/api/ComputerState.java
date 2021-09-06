@@ -6,6 +6,7 @@
 package dan200.computercraft.ingame.api;
 
 import dan200.computercraft.ingame.mod.TestAPI;
+import net.minecraft.gametest.framework.GameTestSequence;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Assertion state of a computer.
  *
  * @see TestAPI For the Lua interface for this.
- * @see TestExtensionsKt#thenComputerOk(TestList, String)
+ * @see TestExtensionsKt#thenComputerOk(GameTestSequence, String)
  */
 public class ComputerState {
     public static final String NOT_EVEN_STARTED = "NOTE EVEN STARTED";
