@@ -24,4 +24,9 @@ class SimpleTest {
     fun longComputer(context: GameTestHelper) = context.sequence {
         thenComputerOk()
     }
+
+    @GameTest
+    fun states(context: GameTestHelper) = context.sequence {
+        thenComputerOk()
+    }
 }

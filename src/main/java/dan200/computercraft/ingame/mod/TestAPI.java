@@ -14,79 +14,80 @@ import dan200.computercraft.ingame.api.ComputerState;
 import dan200.computercraft.ingame.api.TestExtensionsKt;
 import net.minecraft.gametest.framework.GameTestSequence;
 
-import java.util.Optional;
-
 /**
  * API exposed to computers to help write tests.
- *
+ * <p>
  * Note, we extend this API within startup file of computers (see {@code cctest.lua}).
  *
- * @see TestExtensionsKt#thenComputerOk(GameTestSequence, String, String)  To check tests on the computer have passed.
+ * @see TestExtensionsKt#thenComputerOk(GameTestSequence, String)  To check tests on the computer have passed.
  */
-public class TestAPI extends ComputerState implements ILuaAPI
-{
+public class TestAPI extends ComputerState implements ILuaAPI {
     private final IComputerSystem system;
     private String label;
 
-    public TestAPI( IComputerSystem system )
-    {
+    public TestAPI(IComputerSystem system) {
         this.system = system;
     }
 
     @Override
-    public void startup()
-    {
-        if( label == null ) label = system.getLabel();
-        if( label == null )
-        {
+    public void startup() {
+        if (label == null)
+            label = system.getLabel();
+        if (label == null) {
             label = "#" + system.getID();
-            ComputerCraft.log.warn( "Computer {} has no label", label );
+            ComputerCraft.log.warn("Computer {} has no label", label);
         }
 
-        ComputerCraft.log.info( "Computer '{}' has turned on.", label );
-        markers.clear();
+        ComputerCraft.log.info("Computer '{}' has turned on.", label);
+        states.clear();
         error = null;
-        lookup.put( label, this );
+        lookup.put(label, this);
+        states.add(START);
     }
 
     @Override
-    public void shutdown()
-    {
-        ComputerCraft.log.info( "Computer '{}' has shut down.", label );
-        if( lookup.get( label ) == this ) lookup.remove( label );
+    public void shutdown() {
+        ComputerCraft.log.info("Computer '{}' has shut down.", label);
+        if (lookup.get(label) == this)
+            lookup.remove(label);
     }
 
     @Override
-    public String[] getNames()
-    {
-        return new String[] { "test" };
+    public String[] getNames() {
+        return new String[]{"test"};
     }
 
     @LuaFunction
-    public final void fail( String message ) throws LuaException
-    {
-        ComputerCraft.log.error( "Computer '{}' failed with {}", label, message );
-        if( markers.contains( ComputerState.DONE ) ) throw new LuaException( "Cannot call fail/ok multiple times." );
-        markers.add( ComputerState.DONE );
+    public final void fail(String message) throws LuaException {
+        ComputerCraft.log.error("Computer '{}' failed with {}", label, message);
+        if (isDone())
+            throw new LuaException("Cannot call fail/ok multiple times.");
+        states.add(ComputerState.DONE);
         error = message;
-        throw new LuaException( message );
+        throw new LuaException(message);
     }
 
     @LuaFunction
-    public final void ok( Optional<String> marker ) throws LuaException
-    {
-        String actualMarker = marker.orElse( ComputerState.DONE );
-        if( markers.contains( ComputerState.DONE ) || markers.contains( actualMarker ) )
-        {
-            throw new LuaException( "Cannot call fail/ok multiple times." );
-        }
-
-        markers.add( actualMarker );
+    public final void ok() throws LuaException {
+        if (isDone())
+            throw new LuaException("Cannot call fail/ok multiple times.");
+        states.add(DONE);
     }
 
     @LuaFunction
-    public final void log( String message )
-    {
-        ComputerCraft.log.info( "[Computer '{}'] {}", label, message );
+    public final void log(String message) {
+        ComputerCraft.log.info("[Computer '{}'] {}", label, message);
+    }
+
+    @LuaFunction
+    public final void pass(String state) throws LuaException {
+        if (isPass(state))
+            throw new LuaException(String.format("State %s already passed", state));
+        states.add(state);
+    }
+
+    @LuaFunction
+    public final String current() {
+        return getCurrent();
     }
 }

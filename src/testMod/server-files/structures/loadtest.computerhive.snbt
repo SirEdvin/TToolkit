@@ -1,0 +1,96 @@
+{
+    size: [2, 2, 2],
+    entities: [],
+    blocks: [
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_1",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [0, 0, 0],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_2",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [1, 0, 0],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_3",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [0, 1, 0],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_4",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [0, 0, 1],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_5",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [1, 0, 1],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_6",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [0, 1, 1],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_7",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [1, 1, 0],
+            state: 0
+        },
+        {
+            nbt: {
+                id: "computercraft:computer_advanced",
+                Label: "loadtest.computerhive_8",
+                ComputerId: 0,
+                On: 1b
+            },
+            pos: [1, 1, 1],
+            state: 0
+        }
+    ],
+    palette: [
+        {
+            Properties: {
+                facing: "north",
+                state: "blinking"
+            },
+            Name: "computercraft:computer_advanced"
+        }
+    ],
+    DataVersion: 2230
+}
