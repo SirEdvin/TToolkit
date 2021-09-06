@@ -5,6 +5,7 @@
  */
 package dan200.computercraft.ingame.api;
 
+import dan200.computercraft.ComputerCraft;
 import dan200.computercraft.ingame.mod.TestAPI;
 import net.minecraft.test.TestList;
 
@@ -46,5 +47,10 @@ public class ComputerState {
 
     public static ComputerState get(String label) {
         return lookup.get(label);
+    }
+
+    public static void dump(String label) {
+        ComputerState state = lookup.get(label);
+        ComputerCraft.log.warn("{} -> {}", label, state.markers);
     }
 }

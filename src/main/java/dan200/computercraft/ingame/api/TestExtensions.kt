@@ -23,10 +23,14 @@ import javax.imageio.ImageIO
  * Wait until a computer has finished running and check it is OK.
  */
 fun GameTestSequence.thenComputerOk(name: String? = null, marker: String = ComputerState.DONE): GameTestSequence {
-    val label = parent.testName + (if (name == null) "" else ".$name")
+    val label = parent.testName + (if (name == null) "" else "_$name")
     return this.thenWaitUntil{
+        // TODO: add start computer label
         val computer = ComputerState.get(label)
-        if (computer == null || !computer.isDone(marker)) throw GameTestAssertException("Computer '$label' has not finished yet.")
+        if (computer == null || !computer.isDone(marker)) {
+//            ComputerState.dump(label)
+            throw GameTestAssertException("Computer '$label' has not finished yet.")
+        }
     }.thenExecute {
         ComputerState.get(label).check(marker)
     }

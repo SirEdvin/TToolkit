@@ -10,7 +10,7 @@ authors="Daniel Ratcliffe, Aaron Mills, SquidDev"
 license="ComputerCraft Public License (https://raw.githubusercontent.com/dan200/ComputerCraft/master/LICENSE)"
 
 [[mods]]
-modId="pptest"
+modId="ttoolkittest"
 version="1.0.0"
 displayName="CC: Tweaked test framework"
 description='''
