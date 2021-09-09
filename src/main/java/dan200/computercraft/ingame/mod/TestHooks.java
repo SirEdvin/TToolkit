@@ -18,6 +18,7 @@ import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -29,8 +30,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import site.siredvin.ttoolkit.TToolkitMod;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Mod.EventBusSubscriber(modid = TToolkitMod.MOD_ID)
@@ -94,13 +98,26 @@ public class TestHooks {
             finishTests();
     }
 
+    public static Predicate<TestFunction> buildFilterPredicate() {
+        String filterProperty = System.getenv("TTOOLKIT_FILTER");
+        if (filterProperty == null)
+            filterProperty = "*";
+        LOG.info("Filtering with {}", filterProperty);
+        if (filterProperty.equals("*"))
+            return x -> true;
+        List<String> separateFilters = Arrays.asList(filterProperty.split(";"));
+        return test -> separateFilters.stream().anyMatch(filter -> test.getTestName().startsWith(filter));
+    }
+
     public static MultipleTestTracker runTests() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         CommandSourceStack source = server.createCommandSourceStack();
+        Dist dist = FMLLoader.getDist();
         Collection<TestFunction> tests = GameTestRegistry.getAllTestFunctions()
                 .stream()
-                .filter(x -> FMLLoader.getDist().isClient() | !x.getBatchName().startsWith("client"))
-                .filter(x -> FMLLoader.getDist().isDedicatedServer() | !x.getBatchName().startsWith("server"))
+                .filter(x -> dist.isClient() | !x.getBatchName().startsWith("client"))
+                .filter(x -> dist.isDedicatedServer() | !x.getBatchName().startsWith("server"))
+                .filter(buildFilterPredicate())
                 .collect(Collectors.toList());
 
         LOG.info("Running {} tests...", tests.size());
