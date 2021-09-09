@@ -28,10 +28,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import site.siredvin.ttoolkit.TToolkitMod;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Mod.EventBusSubscriber(modid = TToolkitMod.MOD_ID)
@@ -91,6 +89,17 @@ public class TestHooks {
             finishTests();
     }
 
+    public static Predicate<TestFunctionInfo> buildFilterPredicate() {
+        String filterProperty = System.getenv("TTOOLKIT_FILTER");
+        if (filterProperty == null)
+            filterProperty = "*";
+        LOG.info("Filtering with {}", filterProperty);
+        if (filterProperty.equals("*"))
+            return x -> true;
+        List<String> separateFilters = Arrays.asList(filterProperty.split(";"));
+        return test -> separateFilters.stream().anyMatch(filter -> test.testName.startsWith(filter));
+    }
+
     public static TestResultList runTests() {
         failedTests.clear();
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -98,8 +107,9 @@ public class TestHooks {
         Dist dist = FMLLoader.getDist();
         Collection<TestFunctionInfo> tests = TestRegistry.getAllTestFunctions()
                 .stream()
-                .filter(x -> FMLLoader.getDist().isClient() | !x.batchName.startsWith("client"))
-                .filter(x -> FMLLoader.getDist().isDedicatedServer() | !x.batchName.startsWith("server"))
+                .filter(x -> dist.isClient() | !x.batchName.startsWith("client"))
+                .filter(x -> dist.isDedicatedServer() | !x.batchName.startsWith("server"))
+                .filter(buildFilterPredicate())
                 .collect(Collectors.toList());
 
         LOG.info("Running {} tests...", tests.size());
