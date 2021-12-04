@@ -27,7 +27,7 @@ import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
@@ -49,8 +49,8 @@ public final class ClientHooks {
     }
 
     @SubscribeEvent
-    public static void onGuiInit(GuiScreenEvent.InitGuiEvent event) {
-        if (triggered || !(event.getGui() instanceof TitleScreen)) return;
+    public static void onGuiInit(ScreenEvent.InitScreenEvent event) {
+        if (triggered || !(event.getScreen() instanceof TitleScreen)) return;
         triggered = true;
 
         ClientHooks.openWorld();
@@ -87,7 +87,7 @@ public final class ClientHooks {
 
             WorldGenSettings generator = new WorldGenSettings(0, false, false, withOverworld(
                     dimensions,
-                    DimensionType.defaultDimensions(dimensions, biomes, registries.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY), 0),
+                    DimensionType.m_188317_(RegistryAccess.builtin(), 0),
                     new FlatLevelSource(flatSettings)
             ));
 

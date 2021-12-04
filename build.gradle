@@ -22,7 +22,7 @@ version = "${mod_version}" + (isSnapshotVersion ? "-SNAPSHOT" : "")
 group = 'site.siredvin.ttoolkit'
 archivesBaseName = "ttoolkit-${minecraft_version}"
 
-def javaVersion = JavaLanguageVersion.of(16)
+def javaVersion = JavaLanguageVersion.of(17)
 java {
     toolchain {
         languageVersion = javaVersion

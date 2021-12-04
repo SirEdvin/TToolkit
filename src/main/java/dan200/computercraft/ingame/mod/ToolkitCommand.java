@@ -15,6 +15,8 @@ import net.minecraft.gametest.framework.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.commands.KillCommand;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -74,22 +76,22 @@ class ToolkitCommand {
                 }))
                 .then(literal("marker").executes(context -> {
                     ServerPlayer player = context.getSource().getPlayerOrException();
-                    BlockPos pos = StructureUtils.findNearestStructureBlock(player.blockPosition(), 15, player.getLevel());
+                    BlockPos pos = StructureUtils.findNearestStructureBlock(player.blockPosition(), 15, (ServerLevel) player.getCommandSenderWorld());
                     if (pos == null) return error(context.getSource(), "No nearby test");
 
-                    StructureBlockEntity structureBlock = (StructureBlockEntity) player.getLevel().getBlockEntity(pos);
+                    StructureBlockEntity structureBlock = (StructureBlockEntity) player.getCommandSenderWorld().getBlockEntity(pos);
                     TestFunction info = GameTestRegistry.getTestFunction(structureBlock.getStructurePath());
 
+
                     // Kill the existing armor stand
-                    player
-                            .getLevel().getEntities(EntityType.ARMOR_STAND, x -> x.isAlive() && x.getName().getString().equals(info.getTestName()))
+                    ((ServerLevel) player.getCommandSenderWorld()).getEntities(EntityType.ARMOR_STAND, x -> x.isAlive() && x.getName().getString().equals(info.getTestName()))
                             .forEach(Entity::kill);
 
                     // And create a new one
                     CompoundTag nbt = new CompoundTag();
                     nbt.putBoolean("Marker", true);
                     nbt.putBoolean("Invisible", true);
-                    ArmorStand armorStand = EntityType.ARMOR_STAND.create(player.getLevel());
+                    ArmorStand armorStand = EntityType.ARMOR_STAND.create(player.getCommandSenderWorld());
                     armorStand.readAdditionalSaveData(nbt);
                     armorStand.copyPosition(player);
                     armorStand.setCustomName(new TextComponent(info.getTestName()));
