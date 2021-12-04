@@ -87,7 +87,7 @@ public final class ClientHooks {
 
             WorldGenSettings generator = new WorldGenSettings(0, false, false, withOverworld(
                     dimensions,
-                    DimensionType.m_188317_(RegistryAccess.builtin(), 0),
+                    DimensionType.defaultDimensions(RegistryAccess.builtin(), 0),
                     new FlatLevelSource(flatSettings)
             ));
 
